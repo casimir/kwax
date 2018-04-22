@@ -1,6 +1,6 @@
 import wx
-from wx import stc
 
+from faced_text import FacedStaticText
 from kakoune import Kakoune
 from message_handler import MessageHandler
 
@@ -35,18 +35,9 @@ class Client(wx.Frame):
         self.makeMenuBar()
         self.CreateStatusBar()
 
-        font = wx.Font(10, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
-        frame_width = font.PixelSize.width * 100
+        self.status_line = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH)
 
-        status_line_size = (frame_width, font.PixelSize.height * 2)
-        self.status_line = wx.TextCtrl(
-            self, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH, size=status_line_size
-        )
-
-        buffer_size = (frame_width, font.PixelSize.height * 70)
-        self.buffer_view = stc.StyledTextCtrl(self, size=buffer_size)
-        self.buffer_view.SetEditable(False)
-        self.buffer_view.Font = font
+        self.buffer_view = FacedStaticText(self)
         self.buffer_view.Bind(wx.EVT_SIZE, self.OnBufferSize)
         self.buffer_view.Bind(wx.EVT_KEY_DOWN, self.OnBufferKeyPress)
         self.buffer_view.Bind(wx.EVT_CHAR, self.OnBufferChar)
@@ -93,10 +84,8 @@ class Client(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnAbout, aboutItem)
 
     def OnBufferSize(self, event):
-        buffer_w, buffer_h = event.GetSize()
-        char_w, char_h = self.buffer_view.Font.PixelSize.Get()
-        self.kakoune.send_resize(int(buffer_h / char_h), int(buffer_w / char_w))
-        self.buffer_view.SetFocus()
+        w, h = self.buffer_view.compute_dimensions()
+        self.kakoune.send_resize(h, w)
 
     def OnBufferKeyPress(self, event):
         keys = wx_to_kakoune_keys.get(event.KeyCode)

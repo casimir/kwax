@@ -1,33 +1,4 @@
 import wx
-from wx import stc
-
-
-class StyleCache(object):
-
-    def __init__(self, default_face):
-        self._faces = {}
-        self.defaults = default_face
-        self.register(default_face)
-
-    def _hash_face(self, face):
-        return f"{face['fg']}{face['bg']}{set(face['attributes'])}"
-
-    def register(self, face, hash=True):
-        key = self._hash_face(face) if hash else face
-        self._faces[key] = len(self._faces)
-        assert len(self._faces) <= 32
-
-    def get_id(self, face):
-        key = self._hash_face(face)
-        if key not in self._faces:
-            self.register(key, hash=False)
-        return self._faces[key]
-
-    def patch_defaults(self, face):
-        if face['fg'] == "default":
-            face['fg'] = self.defaults['fg']
-        if face['bg'] == "default":
-            face['bg'] = self.defaults['bg']
 
 
 def face_to_style(face, default=None):
@@ -39,8 +10,6 @@ def face_to_style(face, default=None):
     if face['bg'] != "default":
         attr.BackgroundColour = face['bg']
     return attr
-
-
 
 
 class MessageHandler(object):
@@ -59,8 +28,8 @@ class MessageHandler(object):
         print(f"? {message}")
 
     def _write_to_ctrl(self, ctrl, lines, default_face):
+        ctrl.Clear()
         for line in lines:
-            ctrl.Clear()
             default_style = face_to_style(default_face, self.default_style)
             ctrl.SetBackgroundColour(default_style.BackgroundColour)
             ctrl.SetDefaultStyle(default_style)
@@ -71,40 +40,8 @@ class MessageHandler(object):
 
     def do_draw(self, message):
         lines, default_face, padding_face = message.params
+        self.window.buffer_view.set_content(lines, default_face, padding_face)
         self.default_style = face_to_style(default_face)
-        styles = StyleCache(default_face)
-
-        bv = self.window.buffer_view
-        bv.SetEditable(True)
-        bv.ClearAll()
-        bv.StyleClearAll()
-        bv.StyleSetForeground(stc.STC_STYLE_DEFAULT, default_face['fg'])
-        bv.StyleSetBackground(stc.STC_STYLE_DEFAULT, default_face['bg'])
-
-        for line in lines:
-            for atom in line:
-                text = atom['contents']
-                face = atom['face']
-                attributes = face['attributes']
-                if 'reverse' in attributes:
-                    face['fg'], face['bg'] = face['bg'], face['fg']
-
-                style_id = styles.get_id(face)
-                styles.patch_defaults(face)
-                bv.StyleSetSpec(style_id, "")
-                bv.StyleSetFont(style_id, bv.Font)
-                bv.StyleSetForeground(style_id, face['fg'])
-                bv.StyleSetBackground(style_id, face['bg'])
-                bv.StyleSetBold(style_id, 'bold' in attributes)
-                bv.StyleSetItalic(style_id, 'italic' in attributes)
-                bv.StyleSetUnderline(style_id, 'underline' in attributes)
-                # TODO exclusive, blink, dim
-
-                bv.StartStyling(bv.Length, 0x1f)
-                bv.AddText(text)
-                bv.SetStyling(len(text.encode('utf-8')), style_id)
-            bv.NewLine()
-        bv.SetEditable(False)
 
     def do_draw_status(self, message):
         status_line, mode_line, default_face = message.params

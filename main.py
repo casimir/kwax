@@ -50,7 +50,7 @@ class Launcher(wx.App):
 
     def MacOpenFiles(self, fileNames):
         if not self.from_app:
-            return 
+            return
         for fname in fileNames:
             self.client.kakoune.send_command(f"edit '{fname}'")
 
