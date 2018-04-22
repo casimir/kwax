@@ -96,6 +96,7 @@ class Client(wx.Frame):
         buffer_w, buffer_h = event.GetSize()
         char_w, char_h = self.buffer_view.Font.PixelSize.Get()
         self.kakoune.send_resize(int(buffer_h / char_h), int(buffer_w / char_w))
+        self.buffer_view.SetFocus()
 
     def OnBufferKeyPress(self, event):
         keys = wx_to_kakoune_keys.get(event.KeyCode)
