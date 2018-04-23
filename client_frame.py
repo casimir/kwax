@@ -61,31 +61,63 @@ class Client(wx.Frame):
         else:
             self.message_handler.handle(self.kakoune.get_next_message())
 
-    def makeMenuBar(self):
-        fileMenu = wx.Menu()
-        # The "\t..." syntax defines an accelerator key that also triggers
-        # the same event
-        helloItem = fileMenu.Append(
-            wx.ID_ANY, "&Hello...\tCtrl-H", "Help string shown in status bar for this menu item"
+    def refresh_buffer_dimensions(self):
+        w, h = self.buffer_view.compute_dimensions()
+        self.kakoune.send_resize(h, w)
+
+    def register_menu_view(self, menu_bar):
+        bindings = []
+        menu = wx.Menu()
+        item_zoom_in = menu.Append(
+            wx.ID_ANY, "Zoom &in\tCtrl-+", "Zoom buffer in"
         )
-        fileMenu.AppendSeparator()
-        exitItem = fileMenu.Append(wx.ID_EXIT)
+        bindings.append((item_zoom_in, self.menu_view_zoom_in))
+        item_zoom_out = menu.Append(
+            wx.ID_ANY, "Zoom &out\tCtrl--", "Zoom buffer out"
+        )
+        bindings.append((item_zoom_out, self.menu_view_zoom_out))
+        item_zoom_0 = menu.Append(
+            wx.ID_ANY, "Zoom &reset\tCtrl-0", "Reset buffer zoom"
+        )
+        bindings.append((item_zoom_0, self.menu_view_zoom_0))
+        menu.AppendSeparator()
+        menu_bar.Append(menu, "&View")
+        return bindings
+
+    def menu_view_zoom_in(self, event):
+        self.buffer_view.change_font_size('+')
+        self.refresh_buffer_dimensions()
+
+    def menu_view_zoom_out(self, event):
+        self.buffer_view.change_font_size('-')
+        self.refresh_buffer_dimensions()
+
+    def menu_view_zoom_0(self, event):
+        self.buffer_view.change_font_size('0')
+        self.refresh_buffer_dimensions()
+
+    def makeMenuBar(self):
+        menu_file = wx.Menu()
+        menu_file.AppendSeparator()
+        exitItem = menu_file.Append(wx.ID_EXIT)
 
         helpMenu = wx.Menu()
         aboutItem = helpMenu.Append(wx.ID_ABOUT)
 
+        menu_bindings = []
         menuBar = wx.MenuBar()
-        menuBar.Append(fileMenu, "&File")
+        menuBar.Append(menu_file, "&File")
+        menu_bindings += self.register_menu_view(menuBar)
         menuBar.Append(helpMenu, "&Help")
 
         self.SetMenuBar(menuBar)
-        self.Bind(wx.EVT_MENU, self.OnHello, helloItem)
         self.Bind(wx.EVT_MENU, self.OnExit, exitItem)
         self.Bind(wx.EVT_MENU, self.OnAbout, aboutItem)
+        for item, handler in menu_bindings:
+            self.Bind(wx.EVT_MENU, handler, item)
 
     def OnBufferSize(self, event):
-        w, h = self.buffer_view.compute_dimensions()
-        self.kakoune.send_resize(h, w)
+        self.refresh_buffer_dimensions()
 
     def OnBufferKeyPress(self, event):
         keys = wx_to_kakoune_keys.get(event.KeyCode)
@@ -105,9 +137,6 @@ class Client(wx.Frame):
     def OnExit(self, event):
         self.kakoune.stop()
         self.Destroy()
-
-    def OnHello(self, event):
-        wx.MessageBox("Hello again from wxPython")
 
     def OnAbout(self, event):
         wx.MessageBox("An experimental Kakoune GUI", "kwax", wx.OK | wx.ICON_INFORMATION)

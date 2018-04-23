@@ -29,13 +29,18 @@ class FacedStaticText(wx.Window):
 
         self.is_drawing = False
         self.is_dirty = False
-        self.drawing_context = DrawContext()
+        self.drawing_context = None
 
-        font = wx.Font(10, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
+        font_size = wx.NORMAL_FONT.PointSize
+        font = wx.Font(font_size, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
         self.change_font(font)
 
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.Bind(wx.EVT_SIZE, self.OnSize)
+
+    def invalidate(self):
+        self.is_dirty = True
+        self.Parent.Refresh()
         self.SetFocus()
 
     def change_font(self, font):
@@ -44,6 +49,17 @@ class FacedStaticText(wx.Window):
         dc.Font = self.font
         self.font_w = dc.CharWidth
         self.font_h = dc.CharHeight
+        self.invalidate()
+
+    def change_font_size(self, delta):
+        if delta == '+':
+            self.change_font(self.font.Larger())
+        elif delta == '-':
+            self.change_font(self.font.Smaller())
+        elif delta == '0':
+            new = wx.Font(self.font)
+            new.PointSize = wx.NORMAL_FONT.PointSize
+            self.change_font(new)
 
     def compute_dimensions(self):
         bw, bh = self.ClientSize
@@ -52,8 +68,7 @@ class FacedStaticText(wx.Window):
 
     def set_content(self, lines, default_face, padding_face):
         self.drawing_context = DrawContext(lines, default_face, padding_face)
-        self.is_dirty = True
-        self.Parent.Refresh()
+        self.invalidate()
 
     def set_face(self, dc, face):
         dc.TextForeground = self.drawing_context.fg(face)
@@ -74,6 +89,8 @@ class FacedStaticText(wx.Window):
             dc.DrawText("~", 0, i * self.font_h)
 
     def draw(self):
+        if not self.drawing_context:
+            return
         dc = wx.BufferedPaintDC(self)
         if not dc.IsOk():
             return
@@ -88,9 +105,6 @@ class FacedStaticText(wx.Window):
 
     def OnPaint(self, event):
         if not self.is_dirty or self.is_drawing:
-            return
-        dc = wx.PaintDC(self)
-        if not dc.IsOk():
             return
         dc = wx.PaintDC(self)
         if not dc.IsOk():
