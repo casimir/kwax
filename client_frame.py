@@ -26,6 +26,12 @@ wx_to_kakoune_keys = {
 }
 
 
+def alt_key(key):
+    if key.startswith("<"):
+        return "<a-" + key[1:]
+    return f"<a-{key}>"
+
+
 class Client(wx.Frame):
 
     def __init__(self, kakopts):
@@ -119,19 +125,23 @@ class Client(wx.Frame):
     def OnBufferSize(self, event):
         self.refresh_buffer_dimensions()
 
-    def OnBufferKeyPress(self, event):
-        keys = wx_to_kakoune_keys.get(event.KeyCode)
-        if keys:
-            #print("KEY", keys)
-            self.kakoune.send_keys(keys)
+    def OnBufferKeyPress(self, event: wx.KeyEvent):
+        key = wx_to_kakoune_keys.get(event.KeyCode)
+        if key:
+            #print("KEY", key)
+            if event.altDown:
+                key = alt_key(key)
+            self.kakoune.send_keys(key)
         else:
             event.Skip()
 
-    def OnBufferChar(self, event):
+    def OnBufferChar(self, event: wx.KeyEvent):
         keycode = f"{event.UnicodeKey:c}"
-        keys = wx_to_kakoune_keys.get(event.UnicodeKey, keycode)
+        key = wx_to_kakoune_keys.get(event.UnicodeKey, keycode)
         #print("CHAR", keycode, event.UnicodeKey, keys)
-        self.kakoune.send_keys(keys)
+        if event.altDown:
+            key = alt_key(key)
+        self.kakoune.send_keys(key)
         event.Skip()
 
     def OnExit(self, event):
