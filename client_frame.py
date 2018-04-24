@@ -61,6 +61,8 @@ class Client(wx.Frame):
         self.Bind(wx.EVT_TIMER, self.kakoune_tick, self.timer)
         self.timer.Start(10)
 
+        self.Size = (600, 800)
+
     def kakoune_tick(self, event):
         if not self.kakoune.is_running():
             self.Close()
